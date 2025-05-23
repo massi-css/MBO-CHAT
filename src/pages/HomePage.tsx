@@ -110,11 +110,11 @@ const HomePage = () => {
     });
   // Navigate to login if not authenticated
   useEffect(() => {
-    if (!checkUsername()) {
+    if (!checkUsername() && !isConnected) {
       navigate("/login");
       return;
     }
-  }, [navigate, checkUsername]);
+  }, [navigate, checkUsername, isConnected]);
 
   useEffect(() => {
     console.log("Current room changed to:", currentRoom);

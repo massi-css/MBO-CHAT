@@ -21,10 +21,9 @@ interface DirectMessageItem {
 export default function MainLayout({ children }: MainLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [title, setTitle] = useState("Chat");
-  const { username } = useUser();
-  const [activeUsers, setActiveUsers] = useState<Map<string, string>>(
-    new Map()
-  );
+  const { username, initialActiveUsers } = useUser();
+  const [activeUsers, setActiveUsers] =
+    useState<Map<string, string>>(initialActiveUsers);
   const [directMessages, setDirectMessages] = useState<DirectMessageItem[]>([]);
 
   const { isConnected, activeUsers: kafkaActiveUsers } = useKafka({
@@ -51,26 +50,6 @@ export default function MainLayout({ children }: MainLayoutProps) {
         return newMap;
       });
       updateDirectMessages();
-    },
-    onDirectMessage: (message: DirectMessage) => {
-      const fromUser = message.from === username ? message.to : message.from;
-      setDirectMessages((prev) => {
-        const existingIndex = prev.findIndex((dm) => dm.username === fromUser);
-        const updatedDM = {
-          id: fromUser,
-          username: fromUser,
-          lastMessage: message.content,
-          timestamp: new Date(message.timestamp).toLocaleTimeString(),
-        };
-
-        if (existingIndex >= 0) {
-          const newDMs = [...prev];
-          newDMs[existingIndex] = updatedDM;
-          return newDMs;
-        }
-
-        return [...prev, updatedDM];
-      });
     },
   });
 

@@ -6,6 +6,7 @@ export interface UserContextType {
   checkUsername: () => boolean;
   isConnected: boolean;
   connect: (name: string) => Promise<{ success: boolean }>;
+  initialActiveUsers: Map<string, string>;
 }
 
 export const UserContext = createContext<UserContextType | undefined>(

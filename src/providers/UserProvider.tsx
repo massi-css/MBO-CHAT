@@ -10,6 +10,9 @@ export function UserProvider({ children }: UserProviderProps) {
     sessionStorage.getItem("username")
   );
   const [isConnected, setIsConnected] = useState(false);
+  const [initialActiveUsers, setInitialActiveUsers] = useState<Map<string, string>>(
+    new Map()
+  );
 
   const setUsername = (newUsername: string) => {
     sessionStorage.setItem("username", newUsername);
@@ -25,6 +28,8 @@ export function UserProvider({ children }: UserProviderProps) {
       const result = await window.kafka.init(name);
       if (result.success) {
         setIsConnected(true);
+        setInitialActiveUsers(new Map(result.dmList));
+        
       }
       return result;
     } catch (error) {
@@ -35,7 +40,7 @@ export function UserProvider({ children }: UserProviderProps) {
 
   return (
     <UserContext.Provider
-      value={{ username, setUsername, checkUsername, isConnected, connect }}
+      value={{ username, setUsername, checkUsername, isConnected, connect, initialActiveUsers }}
     >
       {children}
     </UserContext.Provider>
