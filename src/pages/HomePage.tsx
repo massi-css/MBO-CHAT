@@ -2,24 +2,32 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PaperclipIcon, SendIcon } from "lucide-react";
 import { useState } from "react";
-import { useMessages } from "@/hooks/useMessages";
-import LoadingScreen from "@/components/LoadingScreen";
-
-interface Message {
-  id: string;
-  text: string;
-  sender: string;
-  timestamp: string;
-  isCurrentUser: boolean;
-}
+import { Message } from "@/types/message";
 
 const HomePage = () => {
-  const { messages, loading, sendMessage } = useMessages();
+  // TODO: Implement Kafka integration
+  // const { messages, loading, sendMessage } = useMessages();
+  const [messages] = useState<Message[]>([
+    {
+      id: "1",
+      text: "Hey there! How are you?",
+      sender: "Alice",
+      timestamp: "12:30 PM",
+      isCurrentUser: false,
+    },
+    {
+      id: "2",
+      text: "I'm good, thanks! How about you?",
+      sender: "You",
+      timestamp: "12:31 PM",
+      isCurrentUser: true,
+    },
+  ]);
   const [newMessage, setNewMessage] = useState("");
 
   const handleSendMessage = async () => {
     if (newMessage.trim()) {
-      await sendMessage(newMessage);
+      // TODO: Implement Kafka message sending
       setNewMessage("");
     }
   };
@@ -30,10 +38,6 @@ const HomePage = () => {
       handleSendMessage();
     }
   };
-
-  if (loading) {
-    return <LoadingScreen />;
-  }
 
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)]">
@@ -88,7 +92,7 @@ const HomePage = () => {
             onChange={(e) => setNewMessage(e.target.value)}
             onKeyDown={handleKeyPress}
             placeholder="Type a message..."
-            className="flex-1"
+            className="flex-1  text-black dark:text-white border-0 bg-slate-200 focus-visible:ring-blue-500"
           />
           <Button
             onClick={handleSendMessage}

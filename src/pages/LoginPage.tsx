@@ -59,7 +59,7 @@ export default function LoginPage() {
             <div className="gap-4 flex items-center">
               <Label htmlFor="username">Username :</Label>{" "}
               <Input
-                className="flex-1 text-black dark:text-white border-0 bg-slate-100 focus-visible:ring-blue-500"
+                className="flex-1 text-black dark:text-white border-0 bg-slate-200 focus-visible:ring-blue-500"
                 id="username"
                 type="text"
                 placeholder="Enter your username"
