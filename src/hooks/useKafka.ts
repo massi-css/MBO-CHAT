@@ -1,5 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
-import { ChatMessage, DirectMessage, UserStatusMessage } from "../types/kafka";
+import {
+  ChatMessage,
+  DirectMessage,
+  UserStatusMessage,
+  FileContent,
+} from "../types/kafka";
 import { useUser } from "./useUser";
 import { TOPICS } from "../shared/kafka-types";
 
@@ -34,17 +39,18 @@ export function useKafka(options: UseKafkaOptions = {}) {
           options.onGlobalMessage?.(message);
           break;
         case TOPICS.DM:
-          // Convert to DirectMessage format if needed
-          const dmMessage: DirectMessage = {
-            from: message.from || message.username,
-            to: message.to,
-            content: message.content,
-            timestamp: message.timestamp,
-          };
-          // Process message if we're either the sender or receiver
-          if (dmMessage.to === username || dmMessage.from === username) {
-            console.log("[useKafka] Processing DM for", username, dmMessage);
-            options.onDirectMessage?.(dmMessage);
+          if (username) {
+            const dmMessage: DirectMessage = {
+              from: message.from || message.username,
+              to: message.to,
+              content: message.content,
+              type: message.type || "text",
+              timestamp: message.timestamp,
+            };
+            if (dmMessage.to === username || dmMessage.from === username) {
+              console.log("[useKafka] Processing DM for", username, dmMessage);
+              options.onDirectMessage?.(dmMessage);
+            }
           }
           break;
       }
@@ -55,25 +61,31 @@ export function useKafka(options: UseKafkaOptions = {}) {
 
   // Send message helper functions
   const sendGlobalMessage = useCallback(
-    async (content: string) => {
+    async (content: string | FileContent, type: "text" | "file" = "text") => {
       if (!username) return { success: false, error: "Not logged in" };
 
       return window.kafka.sendMessage(TOPICS.GLOBAL, {
         username,
         content,
+        type,
         timestamp: Date.now(),
       });
     },
     [username]
   );
   const sendDirectMessage = useCallback(
-    async (to: string, content: string) => {
+    async (
+      to: string,
+      content: string | FileContent,
+      type: "text" | "file" = "text"
+    ) => {
       if (!username) return { success: false, error: "Not logged in" };
 
       return window.kafka.sendMessage(TOPICS.DM, {
         from: username,
         to,
         content,
+        type,
         timestamp: Date.now(),
       });
     },

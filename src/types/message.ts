@@ -5,4 +5,10 @@ export interface Message {
   timestamp: string;
   isCurrentUser: boolean;
   isSystemMessage?: boolean;
+  fileContent?: {
+    filename: string;
+    data: string; // Base64 encoded file data
+    mimeType: string;
+  };
+  type: "text" | "file";
 }

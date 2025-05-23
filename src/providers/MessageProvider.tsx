@@ -1,5 +1,10 @@
 import { MessagesContext } from "@/context/MessagesContext";
-import { ChatMessage, DirectMessage, UserStatusMessage } from "@/types/kafka";
+import {
+  ChatMessage,
+  DirectMessage,
+  UserStatusMessage,
+  FileContent,
+} from "@/types/kafka";
 import { Message } from "@/types/message";
 import { useCallback, useMemo, useState } from "react";
 
@@ -54,7 +59,7 @@ export function MessagesProvider({ children }: { children: React.ReactNode }) {
 
   const initRoom = useCallback((roomId: string) => {
     console.log(`[MessagesContext] Initializing room: ${roomId}`);
-    setState((prevState: any) => {
+    setState((prevState: MessagesState) => {
       if (!prevState.messagesByRoom.has(roomId)) {
         const newMap = new Map(prevState.messagesByRoom);
         newMap.set(roomId, []);
@@ -78,11 +83,13 @@ export function MessagesProvider({ children }: { children: React.ReactNode }) {
       console.log(`[MessagesContext] Handling global message:`, {
         from: message.username,
         content: message.content,
+        type: message.type,
         timestamp: message.timestamp,
       });
+
       const newMsg: Message = {
         id: message.timestamp.toString(),
-        text: message.content,
+        text: typeof message.content === "string" ? message.content : "",
         sender: message.username,
         timestamp: new Date(message.timestamp).toLocaleTimeString([], {
           hour: "2-digit",
@@ -90,6 +97,9 @@ export function MessagesProvider({ children }: { children: React.ReactNode }) {
         }),
         isCurrentUser: message.username === username,
         isSystemMessage: false,
+        type: message.type || "text",
+        fileContent:
+          typeof message.content !== "string" ? message.content : undefined,
       };
       addMessage("global", newMsg);
     },
@@ -102,8 +112,11 @@ export function MessagesProvider({ children }: { children: React.ReactNode }) {
         from: message.from,
         to: message.to,
         content: message.content,
+        type: message.type,
         timestamp: message.timestamp,
-      }); // Determine the room ID based on the other user
+      });
+
+      // Determine the room ID based on the other user
       const roomId = message.from === username ? message.to : message.from;
 
       if (!roomId) {
@@ -119,7 +132,7 @@ export function MessagesProvider({ children }: { children: React.ReactNode }) {
 
       const newMsg: Message = {
         id: message.timestamp.toString(),
-        text: message.content,
+        text: typeof message.content === "string" ? message.content : "",
         sender: message.from,
         timestamp: new Date(message.timestamp).toLocaleTimeString([], {
           hour: "2-digit",
@@ -127,6 +140,9 @@ export function MessagesProvider({ children }: { children: React.ReactNode }) {
         }),
         isCurrentUser: message.from === username,
         isSystemMessage: false,
+        type: message.type || "text",
+        fileContent:
+          typeof message.content !== "string" ? message.content : undefined,
       };
 
       console.log("[MessagesContext] Adding DM to room:", {
@@ -135,7 +151,7 @@ export function MessagesProvider({ children }: { children: React.ReactNode }) {
       });
       addMessage(roomId, newMsg);
     },
-    [addMessage]
+    [addMessage, initRoom]
   );
 
   const handleUserStatusMessage = useCallback(
@@ -154,6 +170,7 @@ export function MessagesProvider({ children }: { children: React.ReactNode }) {
         }),
         isCurrentUser: false,
         isSystemMessage: true,
+        type: "text",
       };
       addMessage("global", systemMsg);
     },

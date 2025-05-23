@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +7,12 @@ import { Message } from "@/types/message";
 import { useKafka } from "@/hooks/useKafka";
 import { useUser } from "@/hooks/useUser";
 import { useMessages } from "@/hooks/useMessages";
-import { ChatMessage, DirectMessage, UserStatusMessage } from "@/types/kafka";
+import {
+  ChatMessage,
+  DirectMessage,
+  UserStatusMessage,
+  FileContent,
+} from "@/types/kafka";
 
 const HomePage = () => {
   const navigate = useNavigate();
@@ -22,13 +27,12 @@ const HomePage = () => {
     handleDirectMessage,
     handleUserStatusMessage,
   } = useMessages();
-  // Use memoized messages to avoid unnecessary rerenders
+
   const messages = useMemo(
     () => getMessages(currentRoom),
     [currentRoom, getMessages]
   );
 
-  // Update current room when URL param changes
   useEffect(() => {
     if (id) {
       setCurrentRoom(id);
@@ -57,13 +61,43 @@ const HomePage = () => {
     },
   });
 
-  // Navigate to login if not authenticated
   useEffect(() => {
     if (!checkUsername() && !isConnected) {
       navigate("/login");
       return;
     }
   }, [navigate, checkUsername, isConnected]);
+
+  const handleSendFile = async (file: File) => {
+    if (!isConnected || !file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const base64Data = (e.target?.result as string)?.split(",")[1];
+      if (!base64Data) return;
+
+      const fileContent: FileContent = {
+        filename: file.name,
+        data: base64Data,
+        mimeType: file.type,
+      };
+
+      console.log("[HomePage] Sending file:", {
+        currentRoom,
+        filename: file.name,
+        isGlobal: currentRoom === "global",
+      });
+
+      const result =
+        currentRoom === "global"
+          ? await sendGlobalMessage(fileContent, "file")
+          : await sendDirectMessage(currentRoom, fileContent, "file");
+
+      console.log("[HomePage] Send file result:", result);
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleSendMessage = async () => {
     if (newMessage.trim() && isConnected) {
       console.log("[HomePage] Sending message:", {
@@ -74,8 +108,8 @@ const HomePage = () => {
 
       const result =
         currentRoom === "global"
-          ? await sendGlobalMessage(newMessage.trim())
-          : await sendDirectMessage(currentRoom, newMessage.trim());
+          ? await sendGlobalMessage(newMessage.trim(), "text")
+          : await sendDirectMessage(currentRoom, newMessage.trim(), "text");
 
       console.log("[HomePage] Send result:", result);
 
@@ -92,6 +126,37 @@ const HomePage = () => {
       e.preventDefault();
       handleSendMessage();
     }
+  };
+
+  const renderMessage = (message: Message) => {
+    if (message.type === "file" && message.fileContent) {
+      const { mimeType, data, filename } = message.fileContent;
+      if (mimeType.startsWith("image/")) {
+        return (
+          <img
+            src={`data:${mimeType};base64,${data}`}
+            alt={filename}
+            className="max-w-full rounded-lg"
+            style={{ maxHeight: "200px" }}
+          />
+        );
+      }
+      // For other file types, show a download link
+      return (
+        <div className="flex items-center gap-2">
+          <PaperclipIcon className="h-4 w-4" />
+          <a
+            href={`data:${mimeType};base64,${data}`}
+            download={filename}
+            className="text-blue-500 hover:underline"
+          >
+            {filename}
+          </a>
+        </div>
+      );
+    }
+    // Regular text message
+    return <div className="text-sm break-words">{message.text}</div>;
   };
 
   return (
@@ -121,7 +186,7 @@ const HomePage = () => {
               {!message.isSystemMessage && (
                 <div className="text-sm font-medium mb-1">{message.sender}</div>
               )}
-              <div className="text-sm break-words">{message.text}</div>
+              {renderMessage(message)}
               <div
                 className={`text-xs mt-1 ${
                   message.isCurrentUser ? "text-blue-100" : "text-gray-500"
@@ -141,9 +206,14 @@ const HomePage = () => {
             size="icon"
             className="shrink-0"
             onClick={() => {
-              // Handle file attachment
               const input = document.createElement("input");
               input.type = "file";
+              input.onchange = (e) => {
+                const file = (e.target as HTMLInputElement).files?.[0];
+                if (file) {
+                  handleSendFile(file);
+                }
+              };
               input.click();
             }}
           >
