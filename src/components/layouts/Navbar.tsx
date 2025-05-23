@@ -18,12 +18,7 @@ export default function Navbar({ title, onMenuClick }: NavbarProps) {
 
   return (
     <header className="sticky top-0 z-10 h-16 px-4 flex items-center gap-4">
-      <Button
-        variant="ghost"
-        size="icon"
-        className="lg:hidden"
-        onClick={onMenuClick}
-      >
+      <Button size="icon" className="lg:hidden" onClick={onMenuClick}>
         <Menu className="h-6 w-6" />
         <span className="sr-only">Toggle menu</span>
       </Button>

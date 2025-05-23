@@ -13,14 +13,14 @@ const Logo = ({ flexPosition }: LogoProps) => {
     flexPositionMap[flexPosition as keyof typeof flexPositionMap] ||
     "justify-start";
   return (
-    <div className="flex items-center uppercase tracking-wider">
+    <div className="flex items-center  tracking-wider">
       <a
         href="/"
         className="text-gray-900 leading-none font-semibold text-xl flex items-center"
       >
-        <div className={`rounded-lg flex flex-col mr-2 ${flexPositionClass}`}>
-          <span className="text-primary font-semibold">MBO</span>
-          <span className="text-black font-thin">CHAT</span>
+        <div className={`rounded-lg flex gap-1 mr-2 ${flexPositionClass}`}>
+          <span className="text-primary font-bold uppercase">MBO</span>
+          <span className="text-black font-semibold">chat</span>
         </div>
       </a>
     </div>

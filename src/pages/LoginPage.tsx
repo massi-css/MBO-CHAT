@@ -47,20 +47,19 @@ export default function LoginPage() {
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Welcome back</CardTitle>
-          <CardDescription>
-            Enter your credentials to access your account
-          </CardDescription>
+          <CardDescription>Enter a name to join the chat</CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 px-8">
             {error && (
               <div className="p-3 text-sm text-red-500 bg-red-50 border border-red-200 rounded">
                 {error}
               </div>
             )}{" "}
-            <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
+            <div className="gap-4 flex items-center">
+              <Label htmlFor="username">Username :</Label>{" "}
               <Input
+                className="flex-1 text-black dark:text-white border-0 bg-slate-100 focus-visible:ring-blue-500"
                 id="username"
                 type="text"
                 placeholder="Enter your username"

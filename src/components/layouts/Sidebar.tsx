@@ -43,12 +43,7 @@ export default function Sidebar({
           <Logo />
         </div>
         {isMobile && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="lg:hidden"
-            onClick={onClose}
-          >
+          <Button size="icon" className="lg:hidden" onClick={onClose}>
             <X className="h-6 w-6" />
             <span className="sr-only">Close menu</span>
           </Button>
