@@ -1,0 +1,98 @@
+import { useState, useEffect, useCallback } from "react";
+import { ChatMessage, UserStatusMessage } from "../types/kafka";
+import { useUser } from "./useUser";
+import { TOPICS } from "../shared/kafka-types";
+
+interface UseKafkaOptions {
+  onUserJoined?: (message: UserStatusMessage) => void;
+  onUserLeft?: (message: UserStatusMessage) => void;
+  onGlobalMessage?: (message: ChatMessage) => void;
+  onDirectMessage?: (message: ChatMessage) => void;
+}
+
+export function useKafka(options: UseKafkaOptions = {}) {
+  const [isConnected, setIsConnected] = useState(false);
+  const [activeUsers, setActiveUsers] = useState<Map<string, string>>(
+    new Map()
+  );
+  const { username } = useUser();
+
+  // Initialize Kafka connection
+  const connect = useCallback(async (name: string) => {
+    try {
+      const result = await window.kafka.init(name);
+      if (result.success) {
+        setIsConnected(true);
+        setActiveUsers(result.dmList);
+      }
+      return result;
+    } catch (error) {
+      console.error("Failed to connect to Kafka:", error);
+      return { success: false, dmList: new Map() };
+    }
+  }, []);
+
+  // Handle incoming messages
+  useEffect(() => {
+    if (!isConnected) return;
+
+    const cleanup = window.kafka.onMessage(({ topic, message }) => {
+      switch (topic) {
+        case TOPICS.USER_JOINED:
+          setActiveUsers(new Map(message.dmList));
+          options.onUserJoined?.(message);
+          break;
+        case TOPICS.USER_LEFT:
+          setActiveUsers(new Map(message.dmList));
+          options.onUserLeft?.(message);
+          break;
+        case TOPICS.GLOBAL:
+          options.onGlobalMessage?.(message);
+          break;
+        case TOPICS.DM:
+          if (message.to === username) {
+            options.onDirectMessage?.(message);
+          }
+          break;
+      }
+    });
+
+    return cleanup;
+  }, [isConnected, options, username]);
+
+  // Send message helper functions
+  const sendGlobalMessage = useCallback(
+    async (content: string) => {
+      if (!username) return { success: false, error: "Not logged in" };
+
+      return window.kafka.sendMessage(TOPICS.GLOBAL, {
+        username,
+        content,
+        timestamp: Date.now(),
+      });
+    },
+    [username]
+  );
+
+  const sendDirectMessage = useCallback(
+    async (to: string, content: string) => {
+      if (!username) return { success: false, error: "Not logged in" };
+
+      return window.kafka.sendMessage(TOPICS.DM, {
+        username,
+        to,
+        content,
+        timestamp: Date.now(),
+      });
+    },
+    [username]
+  );
+
+  return {
+    isConnected,
+    activeUsers,
+    connect,
+    sendGlobalMessage,
+    sendDirectMessage,
+  };
+}

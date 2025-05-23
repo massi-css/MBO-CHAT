@@ -13,13 +13,17 @@ import { Button } from "../components/ui/button";
 import { Label } from "../components/ui/label";
 import Logo from "@/components/layouts/Logo";
 import { useUser } from "../hooks/useUser";
+import { useKafka } from "@/hooks/useKafka";
+import AlertDialog from "@/components/dialogs/AlertDialog";
 
 export default function LoginPage() {
   const navigate = useNavigate();
   const { setUsername, checkUsername } = useUser();
+  const { connect } = useKafka();
   const [usernameInput, setUsernameInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showConnectionError, setShowConnectionError] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,6 +34,15 @@ export default function LoginPage() {
       if (!usernameInput.trim()) {
         throw new Error("Username is required");
       }
+
+      // Try to connect to Kafka first
+      const result = await connect(usernameInput.trim());
+      if (!result.success) {
+        setShowConnectionError(true);
+        return;
+      }
+
+      // If connection successful, set username and navigate
       setUsername(usernameInput.trim());
       navigate("/");
     } catch (error: any) {
@@ -76,6 +89,21 @@ export default function LoginPage() {
           </CardFooter>
         </form>
       </Card>
+
+      <AlertDialog
+        open={showConnectionError}
+        onOpenChange={setShowConnectionError}
+        title="Connection Error"
+        description="Failed to connect to the chat server. Please try again or check if the server is running."
+        confirmText="Try Again"
+        cancelText="OK"
+        variant="destructive"
+        onConfirm={() => {
+          setShowConnectionError(false);
+          handleSubmit(new Event("submit") as any);
+        }}
+        onCancel={() => setShowConnectionError(false)}
+      />
     </div>
   );
 }

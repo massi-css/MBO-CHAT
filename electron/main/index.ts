@@ -3,6 +3,13 @@ import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import os from "node:os";
+import {
+  initKafka,
+  sendMessage,
+  subscribe,
+  shutdown,
+  TOPICS,
+} from "./services/kafka";
 
 const require = createRequire(import.meta.url);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -42,6 +49,35 @@ let win: BrowserWindow | null = null;
 const preload = path.join(__dirname, "../preload/index.mjs");
 const indexHtml = path.join(RENDERER_DIST, "index.html");
 
+// Kafka message handler
+function handleKafkaMessage(topic: string, message: any) {
+  win?.webContents.send("kafka-message", { topic, message });
+}
+
+// Initialize IPC handlers for Kafka
+function initializeKafkaHandlers() {
+  // Handle user login and Kafka initialization
+  ipcMain.handle("kafka-init", async (_, username: string) => {
+    const result = await initKafka(username);
+    if (result.success) {
+      // Subscribe to all topics
+      await subscribe(Object.values(TOPICS), handleKafkaMessage);
+    }
+    return result;
+  });
+
+  // Handle sending messages
+  ipcMain.handle("send-message", async (_, { topic, message }) => {
+    try {
+      await sendMessage(topic, message);
+      return { success: true };
+    } catch (error : any) {
+      console.error("Failed to send message:", error);
+      return { success: false, error: error.message };
+    }
+  });
+}
+
 async function createWindow() {
   win = new BrowserWindow({
     title: "Main window",
@@ -73,13 +109,19 @@ async function createWindow() {
     if (url.startsWith("https:")) shell.openExternal(url);
     return { action: "deny" };
   });
+
+  // Initialize Kafka handlers after window creation
+  initializeKafkaHandlers();
 }
 
 app.whenReady().then(createWindow);
 
 app.on("window-all-closed", () => {
   win = null;
-  if (process.platform !== "darwin") app.quit();
+  // Shutdown Kafka connections before quitting
+  shutdown().finally(() => {
+    if (process.platform !== "darwin") app.quit();
+  });
 });
 
 app.on("second-instance", () => {

@@ -4,4 +4,5 @@ export interface Message {
   sender: string;
   timestamp: string;
   isCurrentUser: boolean;
+  isSystemMessage?: boolean;
 }

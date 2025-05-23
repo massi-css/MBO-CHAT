@@ -3,32 +3,58 @@ import { Input } from "@/components/ui/input";
 import { PaperclipIcon, SendIcon } from "lucide-react";
 import { useState } from "react";
 import { Message } from "@/types/message";
+import { useKafka } from "@/hooks/useKafka";
+import { useUser } from "@/hooks/useUser";
+import { ChatMessage } from "@/types/kafka";
 
 const HomePage = () => {
-  // TODO: Implement Kafka integration
-  // const { messages, loading, sendMessage } = useMessages();
-  const [messages] = useState<Message[]>([
-    {
-      id: "1",
-      text: "Hey there! How are you?",
-      sender: "Alice",
-      timestamp: "12:30 PM",
-      isCurrentUser: false,
-    },
-    {
-      id: "2",
-      text: "I'm good, thanks! How about you?",
-      sender: "You",
-      timestamp: "12:31 PM",
-      isCurrentUser: true,
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
+  const { username } = useUser();
+
+  const { isConnected, sendGlobalMessage } = useKafka({
+    onGlobalMessage: (message: ChatMessage) => {
+      const newMsg: Message = {
+        id: message.timestamp.toString(),
+        text: message.content,
+        sender: message.username,
+        timestamp: new Date(message.timestamp).toLocaleTimeString(),
+        isCurrentUser: message.username === username,
+      };
+      setMessages((prev) => [...prev, newMsg]);
+    },
+    onUserJoined: (message) => {
+      const systemMsg: Message = {
+        id: Date.now().toString(),
+        text: `${message.username} joined the chat`,
+        sender: "System",
+        timestamp: new Date().toLocaleTimeString(),
+        isCurrentUser: false,
+        isSystemMessage: true,
+      };
+      setMessages((prev) => [...prev, systemMsg]);
+    },
+    onUserLeft: (message) => {
+      const systemMsg: Message = {
+        id: Date.now().toString(),
+        text: `${message.username} left the chat`,
+        sender: "System",
+        timestamp: new Date().toLocaleTimeString(),
+        isCurrentUser: false,
+        isSystemMessage: true,
+      };
+      setMessages((prev) => [...prev, systemMsg]);
+    },
+  });
 
   const handleSendMessage = async () => {
-    if (newMessage.trim()) {
-      // TODO: Implement Kafka message sending
-      setNewMessage("");
+    if (newMessage.trim() && isConnected) {
+      const result = await sendGlobalMessage(newMessage.trim());
+      if (result.success) {
+        setNewMessage("");
+      } else {
+        console.error("Failed to send message:", result.error);
+      }
     }
   };
 
@@ -47,17 +73,25 @@ const HomePage = () => {
           <div
             key={message.id}
             className={`flex ${
-              message.isCurrentUser ? "justify-end" : "justify-start"
+              message.isSystemMessage
+                ? "justify-center"
+                : message.isCurrentUser
+                ? "justify-end"
+                : "justify-start"
             }`}
           >
             <div
               className={`max-w-[70%] rounded-2xl px-4 py-2 ${
-                message.isCurrentUser
+                message.isSystemMessage
+                  ? "bg-gray-200 text-gray-600 text-center"
+                  : message.isCurrentUser
                   ? "bg-blue-600 text-white"
                   : "bg-gray-100 text-gray-900"
               }`}
             >
-              <div className="text-sm font-medium mb-1">{message.sender}</div>
+              {!message.isSystemMessage && (
+                <div className="text-sm font-medium mb-1">{message.sender}</div>
+              )}
               <div className="text-sm break-words">{message.text}</div>
               <div
                 className={`text-xs mt-1 ${
@@ -92,11 +126,11 @@ const HomePage = () => {
             onChange={(e) => setNewMessage(e.target.value)}
             onKeyDown={handleKeyPress}
             placeholder="Type a message..."
-            className="flex-1  text-black dark:text-white border-0 bg-slate-200 focus-visible:ring-blue-500"
+            className="flex-1 text-black dark:text-white border-0 bg-slate-200 focus-visible:ring-blue-500"
           />
           <Button
             onClick={handleSendMessage}
-            disabled={!newMessage.trim()}
+            disabled={!newMessage.trim() || !isConnected}
             className="shrink-0"
           >
             <SendIcon className="h-5 w-5" />
