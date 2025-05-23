@@ -10,7 +10,6 @@ const App = () => {
     <UserProvider>
       <HashRouter>
         <Routes>
-          {/* Define your routes here */}
           <Route
             path="/"
             element={
