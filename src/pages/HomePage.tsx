@@ -6,7 +6,7 @@ import { PaperclipIcon, SendIcon } from "lucide-react";
 import { Message } from "@/types/message";
 import { useKafka } from "@/hooks/useKafka";
 import { useUser } from "@/hooks/useUser";
-import { useMessages } from "@/context/MessagesContext";
+import { useMessages } from "@/hooks/useMessages";
 import { ChatMessage, DirectMessage, UserStatusMessage } from "@/types/kafka";
 
 const HomePage = () => {

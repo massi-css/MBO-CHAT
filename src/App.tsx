@@ -1,6 +1,6 @@
 import ErrorBoundary from "./components/ErrorBoundary";
 import MainLayout from "./components/layouts/MainLayout";
-import { MessagesProvider } from "./context/MessagesContext";
+import { MessagesProvider } from "./providers/MessageProvider";
 import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
 import { UserProvider } from "./providers/UserProvider";
