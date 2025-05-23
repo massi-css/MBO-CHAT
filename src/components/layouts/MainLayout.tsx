@@ -1,39 +1,113 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useEffect } from "react";
+import { Outlet, useLocation } from "react-router-dom";
 import Sidebar from "@/components/layouts/Sidebar";
 import Navbar from "@/components/layouts/Navbar";
 import { cn } from "@/lib/utils";
 import { useUser } from "@/hooks/useUser";
+import { useKafka } from "@/hooks/useKafka";
+import { UserStatusMessage, DirectMessage } from "@/types/kafka";
 
 interface MainLayoutProps {
-  children: ReactNode;
+  children?: ReactNode;
+}
+
+interface DirectMessageItem {
+  id: string;
+  username: string;
+  lastMessage: string;
+  timestamp: string;
 }
 
 export default function MainLayout({ children }: MainLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [title, setTitle] = useState("Chat");
   const { username } = useUser();
+  const [activeUsers, setActiveUsers] = useState<Map<string, string>>(
+    new Map()
+  );
+  const [directMessages, setDirectMessages] = useState<DirectMessageItem[]>([]);
 
-  // Example direct messages - in a real app, this would come from your backend
-  const directMessages = [
-    {
-      id: "1",
-      username: "Alice",
-      lastMessage: "Hey, how are you?",
-      timestamp: "12:30 PM",
+  const { isConnected, activeUsers: kafkaActiveUsers } = useKafka({
+    onUserJoined: (message: UserStatusMessage) => {
+      if (message.username !== username) {
+        setActiveUsers((prev) => {
+          const newMap = new Map(prev);
+          newMap.set(message.username, message.consumerId);
+          return newMap;
+        });
+      }
+      // Update with full user list if provided
+      if (message.dmList) {
+        setActiveUsers(
+          new Map(message.dmList.filter(([user]) => user !== username))
+        );
+      }
+      updateDirectMessages();
     },
-    {
-      id: "2",
-      username: "Bob",
-      lastMessage: "Did you see the new updates?",
-      timestamp: "11:45 AM",
+    onUserLeft: (message: UserStatusMessage) => {
+      setActiveUsers((prev) => {
+        const newMap = new Map(prev);
+        newMap.delete(message.username);
+        return newMap;
+      });
+      updateDirectMessages();
     },
-    {
-      id: "3",
-      username: "Charlie",
-      lastMessage: "Let's catch up later!",
-      timestamp: "10:15 AM",
+    onDirectMessage: (message: DirectMessage) => {
+      const fromUser = message.from === username ? message.to : message.from;
+      setDirectMessages((prev) => {
+        const existingIndex = prev.findIndex((dm) => dm.username === fromUser);
+        const updatedDM = {
+          id: fromUser,
+          username: fromUser,
+          lastMessage: message.content,
+          timestamp: new Date(message.timestamp).toLocaleTimeString(),
+        };
+
+        if (existingIndex >= 0) {
+          const newDMs = [...prev];
+          newDMs[existingIndex] = updatedDM;
+          return newDMs;
+        }
+
+        return [...prev, updatedDM];
+      });
     },
-  ];
+  });
+
+  const updateDirectMessages = () => {
+    const dmList = [
+      {
+        id: "global",
+        username: "Global Chat",
+        lastMessage: "Public chat room",
+        timestamp: new Date().toLocaleTimeString(),
+      },
+      ...Array.from(activeUsers.keys()).map((user) => ({
+        id: user,
+        username: user,
+        lastMessage: "Click to start chatting",
+        timestamp: new Date().toLocaleTimeString(),
+      })),
+    ];
+    setDirectMessages(dmList);
+  };
+
+  // Initialize DM list when component mounts
+  useEffect(() => {
+    updateDirectMessages();
+  }, []);
+
+  // Keep active users in sync with Kafka
+  useEffect(() => {
+    if (kafkaActiveUsers.size > 0) {
+      setActiveUsers(
+        new Map(
+          Array.from(kafkaActiveUsers).filter(([user]) => user !== username)
+        )
+      );
+      updateDirectMessages();
+    }
+  }, [kafkaActiveUsers, username]);
 
   return (
     <div className="min-h-screen flex bg-blue-50">
@@ -52,7 +126,6 @@ export default function MainLayout({ children }: MainLayoutProps) {
           isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
       >
-        {" "}
         <Sidebar
           setTitle={setTitle}
           directMessages={directMessages}
@@ -65,7 +138,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
       <div className="flex-1 flex flex-col pl-0 lg:pl-64">
         <Navbar title={title} onMenuClick={() => setIsSidebarOpen(true)} />
         <main className="bg-white relative sm:rounded-tl-3xl shadow-lg flex-1 p-4 sm:p-8 overflow-auto max-w-[calc(7xl-64px)] mx-auto w-[calc(100%-64px)] max-h-[calc(100vh-4rem)]">
-          {children}
+          <Outlet />
         </main>
       </div>
     </div>

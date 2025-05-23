@@ -3,24 +3,23 @@ import MainLayout from "./components/layouts/MainLayout";
 import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
 import { UserProvider } from "./providers/UserProvider";
-import { HashRouter, Routes, Route } from "react-router-dom";
+import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 
 const App = () => {
   return (
     <UserProvider>
       <HashRouter>
         <Routes>
-          <Route
-            path="/"
-            element={
-              <MainLayout>
-                <HomePage />
-              </MainLayout>
-            }
-          />
+          <Route path="/" element={<Navigate to="/chat/global" replace />} />
           <Route path="/login" element={<LoginPage />} />
-          {/* the rest will return error boundary */}
-          <Route path="*" element={<ErrorBoundary />} />
+          <Route path="/chat" element={<MainLayout />}>
+            <Route path="global" element={<HomePage />} />
+            <Route path=":id" element={<HomePage />} />
+          </Route>
+          <Route
+            path="*"
+            element={<ErrorBoundary error={new Error("Page not found")} />}
+          />
         </Routes>
       </HashRouter>
     </UserProvider>

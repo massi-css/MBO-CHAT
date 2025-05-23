@@ -40,11 +40,6 @@ if (os.release().startsWith("6.1")) app.disableHardwareAcceleration();
 // Set application name for Windows 10+ notifications
 if (process.platform === "win32") app.setAppUserModelId(app.getName());
 
-if (!app.requestSingleInstanceLock()) {
-  app.quit();
-  process.exit(0);
-}
-
 let win: BrowserWindow | null = null;
 const preload = path.join(__dirname, "../preload/index.mjs");
 const indexHtml = path.join(RENDERER_DIST, "index.html");
@@ -59,6 +54,7 @@ function initializeKafkaHandlers() {
   // Handle user login and Kafka initialization
   ipcMain.handle("kafka-init", async (_, username: string) => {
     const result = await initKafka(username);
+    console.log("user joined", username, result);
     if (result.success) {
       // Subscribe to all topics
       await subscribe(Object.values(TOPICS), handleKafkaMessage);
@@ -70,8 +66,9 @@ function initializeKafkaHandlers() {
   ipcMain.handle("send-message", async (_, { topic, message }) => {
     try {
       await sendMessage(topic, message);
+      console.log("Message sent:", topic, message);
       return { success: true };
-    } catch (error : any) {
+    } catch (error: any) {
       console.error("Failed to send message:", error);
       return { success: false, error: error.message };
     }
@@ -122,14 +119,6 @@ app.on("window-all-closed", () => {
   shutdown().finally(() => {
     if (process.platform !== "darwin") app.quit();
   });
-});
-
-app.on("second-instance", () => {
-  if (win) {
-    // Focus on the main window if the user tried to open another
-    if (win.isMinimized()) win.restore();
-    win.focus();
-  }
 });
 
 app.on("activate", () => {

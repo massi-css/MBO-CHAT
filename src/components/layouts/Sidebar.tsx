@@ -4,7 +4,6 @@ import { cn } from "@/lib/utils";
 import { X, MessageCircle } from "lucide-react";
 import Logo from "./Logo";
 import { Button } from "../ui/button";
-import { useUser } from "../../hooks/useUser";
 
 interface DirectMessage {
   id: string;
@@ -27,7 +26,6 @@ export default function Sidebar({
   isMobile,
 }: SidebarProps) {
   const location = useLocation();
-  const { username } = useUser();
 
   const handleNavigation = (name: string) => {
     setTitle(name);

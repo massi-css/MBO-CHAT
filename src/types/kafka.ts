@@ -4,8 +4,11 @@ export interface ChatMessage {
   timestamp: number;
 }
 
-export interface DirectMessage extends ChatMessage {
+export interface DirectMessage {
+  from: string;
   to: string;
+  content: string;
+  timestamp: number;
 }
 
 export interface UserStatusMessage {

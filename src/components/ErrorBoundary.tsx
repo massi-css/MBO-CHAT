@@ -1,10 +1,12 @@
-import { useRouteError, isRouteErrorResponse, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { Button } from "./ui/button";
 
-export default function ErrorBoundary() {
-  const error = useRouteError();
+interface ErrorBoundaryProps {
+  error?: Error;
+}
 
-  if (isRouteErrorResponse(error)) {
+export default function ErrorBoundary({ error }: ErrorBoundaryProps) {
+  if (!error) {
     if (error.status === 404) {
       return (
         <div className="min-h-screen flex items-center justify-center bg-slate-50">

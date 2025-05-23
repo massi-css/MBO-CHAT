@@ -9,6 +9,7 @@ import {
   AlertDialogCancel,
   AlertDialogAction,
 } from "@/components/ui/alert-dialog";
+import { cn } from "@/lib/utils";
 import { ReactNode } from "react";
 
 interface AlertDialogProps {
@@ -38,21 +39,31 @@ const AlertDialog = ({
 }: AlertDialogProps) => {
   return (
     <AlertDialogPrimitive open={open} onOpenChange={onOpenChange}>
-      {trigger && <AlertDialogTrigger asChild>{trigger}</AlertDialogTrigger>}
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>{title}</AlertDialogTitle>
-          <AlertDialogDescription>{description}</AlertDialogDescription>
+      {trigger && <AlertDialogTrigger asChild>{trigger}</AlertDialogTrigger>}{" "}
+      <AlertDialogContent className="sm:max-w-[425px] gap-0 p-0 overflow-hidden">
+        <AlertDialogHeader className="p-6 pb-0">
+          <AlertDialogTitle className="text-xl font-semibold tracking-tight">
+            {title}
+          </AlertDialogTitle>
+          <AlertDialogDescription className="mt-3 text-[15px] leading-normal text-gray-500">
+            {description}
+          </AlertDialogDescription>
         </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel onClick={onCancel}>{cancelText}</AlertDialogCancel>
+        <AlertDialogFooter className="px-6 py-4 bg-gray-50/80 border-t gap-3">
+          <AlertDialogCancel
+            onClick={onCancel}
+            className="flex-1 mt-0 px-8 bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 font-medium shadow-sm transition-all hover:border-gray-300"
+          >
+            {cancelText}
+          </AlertDialogCancel>
           <AlertDialogAction
             onClick={onConfirm}
-            className={
+            className={cn(
+              "flex-1 px-8 shadow-sm transition-all font-medium",
               variant === "destructive"
-                ? "bg-destructive hover:bg-destructive/90"
-                : ""
-            }
+                ? "bg-red-600 hover:bg-red-700 text-white border border-red-600"
+                : "bg-blue-600 hover:bg-blue-700 text-white border border-blue-600"
+            )}
           >
             {confirmText}
           </AlertDialogAction>

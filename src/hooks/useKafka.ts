@@ -11,26 +11,10 @@ interface UseKafkaOptions {
 }
 
 export function useKafka(options: UseKafkaOptions = {}) {
-  const [isConnected, setIsConnected] = useState(false);
   const [activeUsers, setActiveUsers] = useState<Map<string, string>>(
     new Map()
   );
-  const { username } = useUser();
-
-  // Initialize Kafka connection
-  const connect = useCallback(async (name: string) => {
-    try {
-      const result = await window.kafka.init(name);
-      if (result.success) {
-        setIsConnected(true);
-        setActiveUsers(result.dmList);
-      }
-      return result;
-    } catch (error) {
-      console.error("Failed to connect to Kafka:", error);
-      return { success: false, dmList: new Map() };
-    }
-  }, []);
+  const { username, isConnected, connect } = useUser();
 
   // Handle incoming messages
   useEffect(() => {
