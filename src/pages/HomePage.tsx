@@ -44,7 +44,10 @@ const HomePage = () => {
       handleGlobalMessage(message, username || "");
     },
     onDirectMessage: (message: DirectMessage) => {
-      handleDirectMessage(message, username || "");
+      console.log("[HomePage] Received DM:", message);
+      if (username) {
+        handleDirectMessage(message, username);
+      }
     },
     onUserJoined: (message: UserStatusMessage) => {
       handleUserStatusMessage(message, "joined");
@@ -61,18 +64,25 @@ const HomePage = () => {
       return;
     }
   }, [navigate, checkUsername, isConnected]);
-
   const handleSendMessage = async () => {
     if (newMessage.trim() && isConnected) {
+      console.log("[HomePage] Sending message:", {
+        currentRoom,
+        message: newMessage.trim(),
+        isGlobal: currentRoom === "global",
+      });
+
       const result =
         currentRoom === "global"
           ? await sendGlobalMessage(newMessage.trim())
           : await sendDirectMessage(currentRoom, newMessage.trim());
 
+      console.log("[HomePage] Send result:", result);
+
       if (result.success) {
         setNewMessage("");
       } else {
-        console.error("Failed to send message:", result.error);
+        console.error("[HomePage] Failed to send message:", result.error);
       }
     }
   };

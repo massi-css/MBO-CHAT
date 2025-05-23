@@ -32,10 +32,18 @@ export function useKafka(options: UseKafkaOptions = {}) {
           break;
         case TOPICS.GLOBAL:
           options.onGlobalMessage?.(message);
-          break;
-        case TOPICS.DM:
-          if (message.to === username) {
-            options.onDirectMessage?.(message);
+          break;        case TOPICS.DM:
+          // Convert to DirectMessage format if needed
+          const dmMessage: DirectMessage = {
+            from: message.from || message.username,
+            to: message.to,
+            content: message.content,
+            timestamp: message.timestamp
+          };
+          // Process message if we're either the sender or receiver
+          if (dmMessage.to === username || dmMessage.from === username) {
+            console.log("[useKafka] Processing DM for", username, dmMessage);
+            options.onDirectMessage?.(dmMessage);
           }
           break;
       }
@@ -57,13 +65,12 @@ export function useKafka(options: UseKafkaOptions = {}) {
     },
     [username]
   );
-
   const sendDirectMessage = useCallback(
     async (to: string, content: string) => {
       if (!username) return { success: false, error: "Not logged in" };
 
       return window.kafka.sendMessage(TOPICS.DM, {
-        username,
+        from: username,
         to,
         content,
         timestamp: Date.now(),

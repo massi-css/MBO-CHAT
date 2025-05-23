@@ -127,8 +127,20 @@ export function MessagesProvider({ children }: { children: React.ReactNode }) {
         to: message.to,
         content: message.content,
         timestamp: message.timestamp,
-      });
-      const fromUser = message.from === username ? message.to : message.from;
+      }); // Determine the room ID based on the other user
+      const roomId = message.from === username ? message.to : message.from;
+
+      if (!roomId) {
+        console.error(
+          "[MessagesContext] Cannot determine room ID for DM:",
+          message
+        );
+        return;
+      }
+
+      // Initialize the room if it doesn't exist
+      initRoom(roomId);
+
       const newMsg: Message = {
         id: message.timestamp.toString(),
         text: message.content,
@@ -140,7 +152,12 @@ export function MessagesProvider({ children }: { children: React.ReactNode }) {
         isCurrentUser: message.from === username,
         isSystemMessage: false,
       };
-      addMessage(fromUser, newMsg);
+
+      console.log("[MessagesContext] Adding DM to room:", {
+        roomId,
+        message: newMsg,
+      });
+      addMessage(roomId, newMsg);
     },
     [addMessage]
   );
