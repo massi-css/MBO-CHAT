@@ -32,13 +32,14 @@ export function useKafka(options: UseKafkaOptions = {}) {
           break;
         case TOPICS.GLOBAL:
           options.onGlobalMessage?.(message);
-          break;        case TOPICS.DM:
+          break;
+        case TOPICS.DM:
           // Convert to DirectMessage format if needed
           const dmMessage: DirectMessage = {
             from: message.from || message.username,
             to: message.to,
             content: message.content,
-            timestamp: message.timestamp
+            timestamp: message.timestamp,
           };
           // Process message if we're either the sender or receiver
           if (dmMessage.to === username || dmMessage.from === username) {
