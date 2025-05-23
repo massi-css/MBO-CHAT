@@ -1,0 +1,205 @@
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useMemo,
+} from "react";
+import { Message } from "@/types/message";
+import { ChatMessage, DirectMessage, UserStatusMessage } from "@/types/kafka";
+
+interface MessagesState {
+  messagesByRoom: Map<string, Message[]>;
+  activeRooms: Set<string>;
+}
+
+interface MessagesContextType {
+  messagesByRoom: Map<string, Message[]>;
+  activeRooms: Set<string>;
+  addMessage: (roomId: string, message: Message) => void;
+  getMessages: (roomId: string) => Message[];
+  initRoom: (roomId: string) => void;
+  handleGlobalMessage: (message: ChatMessage, username: string) => void;
+  handleDirectMessage: (message: DirectMessage, username: string) => void;
+  handleUserStatusMessage: (
+    message: UserStatusMessage,
+    type: "joined" | "left"
+  ) => void;
+}
+
+const MessagesContext = createContext<MessagesContextType | undefined>(
+  undefined
+);
+
+export function MessagesProvider({ children }: { children: React.ReactNode }) {
+  const [state, setState] = useState<MessagesState>({
+    messagesByRoom: new Map([["global", []]]),
+    activeRooms: new Set(["global"]),
+  });
+
+  const addMessage = useCallback((roomId: string, message: Message) => {
+    console.log(`[MessagesContext] Adding message to room ${roomId}:`, message);
+    setState((prevState) => {
+      const newMap = new Map(prevState.messagesByRoom);
+      if (!newMap.has(roomId)) {
+        console.log(`[MessagesContext] Initializing new room: ${roomId}`);
+        newMap.set(roomId, []);
+      }
+      const roomMessages = [...(newMap.get(roomId) || []), message];
+      newMap.set(roomId, roomMessages);
+
+      const newActiveRooms = new Set(prevState.activeRooms);
+      newActiveRooms.add(roomId);
+
+      console.log(`[MessagesContext] Updated state for room ${roomId}:`, {
+        messageCount: roomMessages.length,
+        activeRooms: Array.from(newActiveRooms),
+      });
+
+      return {
+        messagesByRoom: newMap,
+        activeRooms: newActiveRooms,
+      };
+    });
+  }, []);
+
+  const getMessages = useCallback(
+    (roomId: string) => {
+      const messages = state.messagesByRoom.get(roomId) || [];
+      console.log(`[MessagesContext] Getting messages for room ${roomId}:`, {
+        messageCount: messages.length,
+        firstMessage: messages[0]?.text,
+        lastMessage: messages[messages.length - 1]?.text,
+      });
+      return messages;
+    },
+    [state.messagesByRoom]
+  );
+
+  const initRoom = useCallback((roomId: string) => {
+    console.log(`[MessagesContext] Initializing room: ${roomId}`);
+    setState((prevState) => {
+      if (!prevState.messagesByRoom.has(roomId)) {
+        const newMap = new Map(prevState.messagesByRoom);
+        newMap.set(roomId, []);
+        const newActiveRooms = new Set(prevState.activeRooms);
+        newActiveRooms.add(roomId);
+        console.log(`[MessagesContext] Created new room ${roomId}`, {
+          activeRooms: Array.from(newActiveRooms),
+        });
+        return {
+          messagesByRoom: newMap,
+          activeRooms: newActiveRooms,
+        };
+      }
+      console.log(`[MessagesContext] Room ${roomId} already exists`);
+      return prevState;
+    });
+  }, []);
+
+  const handleGlobalMessage = useCallback(
+    (message: ChatMessage, username: string) => {
+      console.log(`[MessagesContext] Handling global message:`, {
+        from: message.username,
+        content: message.content,
+        timestamp: message.timestamp,
+      });
+      const newMsg: Message = {
+        id: message.timestamp.toString(),
+        text: message.content,
+        sender: message.username,
+        timestamp: new Date(message.timestamp).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+        isCurrentUser: message.username === username,
+        isSystemMessage: false,
+      };
+      addMessage("global", newMsg);
+    },
+    [addMessage]
+  );
+
+  const handleDirectMessage = useCallback(
+    (message: DirectMessage, username: string) => {
+      console.log(`[MessagesContext] Handling direct message:`, {
+        from: message.from,
+        to: message.to,
+        content: message.content,
+        timestamp: message.timestamp,
+      });
+      const fromUser = message.from === username ? message.to : message.from;
+      const newMsg: Message = {
+        id: message.timestamp.toString(),
+        text: message.content,
+        sender: message.from,
+        timestamp: new Date(message.timestamp).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+        isCurrentUser: message.from === username,
+        isSystemMessage: false,
+      };
+      addMessage(fromUser, newMsg);
+    },
+    [addMessage]
+  );
+
+  const handleUserStatusMessage = useCallback(
+    (message: UserStatusMessage, type: "joined" | "left") => {
+      console.log(`[MessagesContext] Handling user ${type} message:`, {
+        username: message.username,
+        dmList: message.dmList,
+      });
+      const systemMsg: Message = {
+        id: Date.now().toString(),
+        text: `${message.username} ${type} the chat`,
+        sender: "System",
+        timestamp: new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+        isCurrentUser: false,
+        isSystemMessage: true,
+      };
+      addMessage("global", systemMsg);
+    },
+    [addMessage]
+  );
+
+  const contextValue = useMemo(
+    () => ({
+      messagesByRoom: state.messagesByRoom,
+      activeRooms: state.activeRooms,
+      addMessage,
+      getMessages,
+      initRoom,
+      handleGlobalMessage,
+      handleDirectMessage,
+      handleUserStatusMessage,
+    }),
+    [
+      state,
+      addMessage,
+      getMessages,
+      initRoom,
+      handleGlobalMessage,
+      handleDirectMessage,
+      handleUserStatusMessage,
+    ]
+  );
+
+  return (
+    <MessagesContext.Provider value={contextValue}>
+      {children}
+    </MessagesContext.Provider>
+  );
+}
+
+export function useMessages() {
+  const context = useContext(MessagesContext);
+  if (context === undefined) {
+    throw new Error("useMessages must be used within a MessagesProvider");
+  }
+  return context;
+}

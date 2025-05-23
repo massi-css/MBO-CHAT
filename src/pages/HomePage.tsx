@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,108 +6,54 @@ import { PaperclipIcon, SendIcon } from "lucide-react";
 import { Message } from "@/types/message";
 import { useKafka } from "@/hooks/useKafka";
 import { useUser } from "@/hooks/useUser";
+import { useMessages } from "@/context/MessagesContext";
 import { ChatMessage, DirectMessage, UserStatusMessage } from "@/types/kafka";
 
 const HomePage = () => {
   const navigate = useNavigate();
   const { id } = useParams();
-  const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const { username, checkUsername } = useUser();
   const [currentRoom, setCurrentRoom] = useState(id || "global");
-  const [messagesByRoom, setMessagesByRoom] = useState<Map<string, Message[]>>(
-    new Map([["global", []]])
+  const {
+    getMessages,
+    initRoom,
+    handleGlobalMessage,
+    handleDirectMessage,
+    handleUserStatusMessage,
+  } = useMessages();
+  // Use memoized messages to avoid unnecessary rerenders
+  const messages = useMemo(
+    () => getMessages(currentRoom),
+    [currentRoom, getMessages]
   );
 
   // Update current room when URL param changes
   useEffect(() => {
     if (id) {
       setCurrentRoom(id);
+      initRoom(id);
+    } else {
+      setCurrentRoom("global");
+      initRoom("global");
     }
-  }, [id]);
+  }, [id, initRoom]);
 
-  const { isConnected, connect, sendGlobalMessage, sendDirectMessage } =
-    useKafka({
-      onGlobalMessage: (message: ChatMessage) => {
-        const newMsg: Message = {
-          id: message.timestamp.toString(),
-          text: message.content,
-          sender: message.username,
-          timestamp: new Date(message.timestamp).toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-          isCurrentUser: message.username === username,
-        };
+  const { isConnected, sendGlobalMessage, sendDirectMessage } = useKafka({
+    onGlobalMessage: (message: ChatMessage) => {
+      handleGlobalMessage(message, username || "");
+    },
+    onDirectMessage: (message: DirectMessage) => {
+      handleDirectMessage(message, username || "");
+    },
+    onUserJoined: (message: UserStatusMessage) => {
+      handleUserStatusMessage(message, "joined");
+    },
+    onUserLeft: (message: UserStatusMessage) => {
+      handleUserStatusMessage(message, "left");
+    },
+  });
 
-        setMessagesByRoom((prev) => {
-          const newMap = new Map(prev);
-          const globalMessages = [...(prev.get("global") || []), newMsg];
-          newMap.set("global", globalMessages);
-          return newMap;
-        });
-      },
-      onDirectMessage: (message: DirectMessage) => {
-        const fromUser = message.from === username ? message.to : message.from;
-        const newMsg: Message = {
-          id: message.timestamp.toString(),
-          text: message.content,
-          sender: message.from,
-          timestamp: new Date(message.timestamp).toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-          isCurrentUser: message.from === username,
-        };
-
-        setMessagesByRoom((prev) => {
-          const newMap = new Map(prev);
-          const roomMessages = [...(prev.get(fromUser) || []), newMsg];
-          newMap.set(fromUser, roomMessages);
-          return newMap;
-        });
-      },
-      onUserJoined: (message: UserStatusMessage) => {
-        const systemMsg: Message = {
-          id: Date.now().toString(),
-          text: `${message.username} joined the chat`,
-          sender: "System",
-          timestamp: new Date().toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-          isCurrentUser: false,
-          isSystemMessage: true,
-        };
-
-        setMessagesByRoom((prev) => {
-          const newMap = new Map(prev);
-          const globalMessages = [...(prev.get("global") || []), systemMsg];
-          newMap.set("global", globalMessages);
-          return newMap;
-        });
-      },
-      onUserLeft: (message: UserStatusMessage) => {
-        const systemMsg: Message = {
-          id: Date.now().toString(),
-          text: `${message.username} left the chat`,
-          sender: "System",
-          timestamp: new Date().toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-          isCurrentUser: false,
-          isSystemMessage: true,
-        };
-
-        setMessagesByRoom((prev) => {
-          const newMap = new Map(prev);
-          const globalMessages = [...(prev.get("global") || []), systemMsg];
-          newMap.set("global", globalMessages);
-          return newMap;
-        });
-      },
-    });
   // Navigate to login if not authenticated
   useEffect(() => {
     if (!checkUsername() && !isConnected) {
@@ -115,16 +61,6 @@ const HomePage = () => {
       return;
     }
   }, [navigate, checkUsername, isConnected]);
-
-  useEffect(() => {
-    console.log("Current room changed to:", currentRoom);
-    console.log("isconnected", isConnected);
-  }, [currentRoom]);
-
-  // Update messages when room changes or new messages arrive
-  useEffect(() => {
-    setMessages(messagesByRoom.get(currentRoom) || []);
-  }, [currentRoom, messagesByRoom]);
 
   const handleSendMessage = async () => {
     if (newMessage.trim() && isConnected) {

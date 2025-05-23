@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { ChatMessage, UserStatusMessage } from "../types/kafka";
+import { ChatMessage, DirectMessage, UserStatusMessage } from "../types/kafka";
 import { useUser } from "./useUser";
 import { TOPICS } from "../shared/kafka-types";
 
@@ -7,7 +7,7 @@ interface UseKafkaOptions {
   onUserJoined?: (message: UserStatusMessage) => void;
   onUserLeft?: (message: UserStatusMessage) => void;
   onGlobalMessage?: (message: ChatMessage) => void;
-  onDirectMessage?: (message: ChatMessage) => void;
+  onDirectMessage?: (message: DirectMessage) => void;
 }
 
 export function useKafka(options: UseKafkaOptions = {}) {
