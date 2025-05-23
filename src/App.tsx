@@ -1,11 +1,30 @@
-import { Button } from "./components/ui/button";
+import ErrorBoundary from "./components/ErrorBoundary";
+import MainLayout from "./components/layouts/MainLayout";
+import HomePage from "./pages/HomePage";
+import LoginPage from "./pages/LoginPage";
+import { UserProvider } from "./providers/UserProvider";
+import { HashRouter, Routes, Route } from "react-router-dom";
 
 const App = () => {
   return (
-    <div className="flex flex-col gap-4 w-100vw h-100vh items-center justify-center">
-      <h1 className="text-2xl font-bold">Chat App</h1>
-      <Button>Send Message</Button>
-    </div>
+    <UserProvider>
+      <HashRouter>
+        <Routes>
+          {/* Define your routes here */}
+          <Route
+            path="/"
+            element={
+              <MainLayout>
+                <HomePage />
+              </MainLayout>
+            }
+          />
+          <Route path="/login" element={<LoginPage />} />
+          {/* the rest will return error boundary */}
+          <Route path="*" element={<ErrorBoundary />} />
+        </Routes>
+      </HashRouter>
+    </UserProvider>
   );
 };
 
