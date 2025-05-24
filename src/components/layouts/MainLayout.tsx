@@ -46,7 +46,6 @@ export default function MainLayout({ children }: MainLayoutProps) {
         timestamp: new Date().toLocaleTimeString(),
       }));
 
-      // Sort the list to ensure global chat is always first
       const sortedList = dmList.sort((a, b) => {
         if (a.id === "global") return -1;
         if (b.id === "global") return 1;
@@ -58,14 +57,12 @@ export default function MainLayout({ children }: MainLayoutProps) {
     [username]
   );
 
-  // Initialize DM list with initial active users
   useEffect(() => {
     if (initialActiveUsers.size > 0) {
       updateDirectMessages(initialActiveUsers);
     }
   }, [initialActiveUsers, updateDirectMessages]);
 
-  // Keep direct messages in sync with Kafka active users
   useEffect(() => {
     if (kafkaActiveUsers.size > 0) {
       updateDirectMessages(kafkaActiveUsers);
