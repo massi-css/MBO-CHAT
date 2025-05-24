@@ -3,8 +3,10 @@ import { Outlet, useLocation } from "react-router-dom";
 import Sidebar from "@/components/layouts/Sidebar";
 import Navbar from "@/components/layouts/Navbar";
 import { cn } from "@/lib/utils";
+import { formatTime } from "@/lib/date";
 import { useUser } from "@/hooks/useUser";
 import { useKafka } from "@/hooks/useKafka";
+import { useMessages } from "@/hooks/useMessages";
 import { UserStatusMessage } from "@/types/kafka";
 
 interface MainLayoutProps {
@@ -23,6 +25,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const [title, setTitle] = useState("Chat");
   const { username, initialActiveUsers } = useUser();
   const [directMessages, setDirectMessages] = useState<DirectMessageItem[]>([]);
+  const { messagesByRoom, getMessages } = useMessages();
 
   // Use activeUsers from Kafka hook which maintains the up-to-date list
   const { activeUsers: kafkaActiveUsers } = useKafka({
@@ -38,13 +41,24 @@ export default function MainLayout({ children }: MainLayoutProps) {
       const filteredUsers = new Map(
         Array.from(userList).filter(([user]) => user !== username)
       );
-      const dmList = Array.from(filteredUsers.keys()).map((user) => ({
-        id: user,
-        username: user === "global" ? "Global Chat" : user,
-        lastMessage:
-          user === "global" ? "Public chat room" : "Click to start chatting",
-        timestamp: new Date().toLocaleTimeString(),
-      }));
+
+      const dmList = Array.from(filteredUsers.keys()).map((user) => {
+        // Get messages for this room
+        const userMessages = getMessages(user === "global" ? "global" : user);
+        const lastMsg = userMessages[userMessages.length - 1];
+        console.log(`Last message for ${user}:`, lastMsg);
+
+        return {
+          id: user,
+          username: user === "global" ? "Global Chat" : user,
+          lastMessage: lastMsg
+            ? lastMsg.text
+            : user === "global"
+            ? "Public chat room"
+            : "Click to start chatting",
+          timestamp: lastMsg ? lastMsg.timestamp : formatTime(new Date()),
+        };
+      });
 
       const sortedList = dmList.sort((a, b) => {
         if (a.id === "global") return -1;
@@ -54,7 +68,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
       setDirectMessages(sortedList);
     },
-    [username]
+    [username, getMessages]
   );
 
   useEffect(() => {
@@ -62,12 +76,11 @@ export default function MainLayout({ children }: MainLayoutProps) {
       updateDirectMessages(initialActiveUsers);
     }
   }, [initialActiveUsers, updateDirectMessages]);
-
   useEffect(() => {
     if (kafkaActiveUsers.size > 0) {
       updateDirectMessages(kafkaActiveUsers);
     }
-  }, [kafkaActiveUsers, updateDirectMessages]);
+  }, [kafkaActiveUsers, updateDirectMessages, messagesByRoom]);
 
   return (
     <div className="min-h-screen flex bg-blue-50">

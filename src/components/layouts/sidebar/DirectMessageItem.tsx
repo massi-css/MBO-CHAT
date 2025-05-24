@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom";
-import { MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface DirectMessage {
@@ -32,14 +31,14 @@ export function DirectMessageItem({
       )}
       onClick={() => onNavigate(dm.username)}
     >
-      <MessageCircle
+      {" "}
+      <div
         className={cn(
-          "size-6 transition-colors",
-          isActive
-            ? "text-slate-900"
-            : "text-slate-500 group-hover:text-blue-600"
+          "flex items-center justify-center size-10 rounded-full font-bold text-lg transition-colors bg-blue-100 text-blue-600"
         )}
-      />
+      >
+        {dm.username[0].toUpperCase()}
+      </div>
       <div className="flex-1 overflow-hidden">
         <div className="font-medium">{dm.username}</div>
         {dm.lastMessage && (
