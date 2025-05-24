@@ -1,11 +1,31 @@
-import { Button } from "./components/ui/button";
+import ErrorBoundary from "./components/ErrorBoundary";
+import MainLayout from "./components/layouts/MainLayout";
+import { MessagesProvider } from "./providers/MessageProvider";
+import HomePage from "./pages/HomePage";
+import LoginPage from "./pages/LoginPage";
+import { UserProvider } from "./providers/UserProvider";
+import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 
 const App = () => {
   return (
-    <div className="flex flex-col gap-4 w-100vw h-100vh items-center justify-center">
-      <h1 className="text-2xl font-bold">Chat App</h1>
-      <Button>Send Message</Button>
-    </div>
+    <UserProvider>
+      <MessagesProvider>
+        <HashRouter>
+          <Routes>
+            <Route path="/" element={<Navigate to="/chat/global" replace />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/chat" element={<MainLayout />}>
+              <Route path="global" element={<HomePage />} />
+              <Route path=":id" element={<HomePage />} />
+            </Route>
+            <Route
+              path="*"
+              element={<ErrorBoundary error={new Error("Page not found")} />}
+            />
+          </Routes>
+        </HashRouter>
+      </MessagesProvider>
+    </UserProvider>
   );
 };
 
