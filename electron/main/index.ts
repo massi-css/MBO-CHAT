@@ -19,6 +19,7 @@ import {
   subscribe,
   shutdown,
   TOPICS,
+  getActiveUsers,
 } from "./services/kafka";
 
 const require = createRequire(import.meta.url);
@@ -118,6 +119,10 @@ function initializeKafkaHandlers() {
     if (result.success) {
       // Subscribe to all topics
       await subscribe(Object.values(TOPICS), handleKafkaMessage);
+      // Add global chat to the user's DM list
+      if (result.dmList) {
+        result.dmList.set("global", "global-chat");
+      }
     }
     return result;
   });
@@ -131,6 +136,21 @@ function initializeKafkaHandlers() {
     } catch (error: any) {
       console.error("Failed to send message:", error);
       return { success: false, error: error.message };
+    }
+  });
+
+  // Handle getting active users
+  ipcMain.handle("get-active-users", async () => {
+    try {
+      const dmList = await getActiveUsers();
+      // Always add global chat to the list
+      dmList.set("global", "global-chat");
+      return { success: true, dmList };
+    } catch (error: any) {
+      console.error("Failed to get active users:", error);
+      const emptyList = new Map();
+      emptyList.set("global", "global-chat");
+      return { success: false, dmList: emptyList };
     }
   });
 }

@@ -20,6 +20,26 @@ export function useKafka(options: UseKafkaOptions = {}) {
     new Map()
   );
   const { username, isConnected, connect } = useUser();
+  const refreshActiveUsers = useCallback(
+    async (newUser?: { username: string; consumerId: string }) => {
+      try {
+        const result = await window.kafka.getActiveUsers();
+        console.log("Active users:", result.dmList);
+        if (result.success) {
+          const updatedUsers = new Map(result.dmList);
+          // If there's a new user that just joined, make sure they're included
+          // This handles the case where their consumer group isn't marked as stable yet
+          if (newUser) {
+            updatedUsers.set(newUser.username, newUser.consumerId);
+          }
+          setActiveUsers(updatedUsers);
+        }
+      } catch (error) {
+        console.error("Failed to refresh active users:", error);
+      }
+    },
+    []
+  );
 
   // Handle incoming messages
   useEffect(() => {
@@ -28,12 +48,21 @@ export function useKafka(options: UseKafkaOptions = {}) {
     const cleanup = window.kafka.onMessage(({ topic, message }) => {
       switch (topic) {
         case TOPICS.USER_JOINED:
-          setActiveUsers(new Map(message.dmList));
-          options.onUserJoined?.(message);
-          break;
         case TOPICS.USER_LEFT:
-          setActiveUsers(new Map(message.dmList));
-          options.onUserLeft?.(message);
+          if (topic === TOPICS.USER_JOINED) {
+            // For joins, include the new user immediately while fetching the full list
+            refreshActiveUsers({
+              username: message.username,
+              consumerId: message.consumerId,
+            }).then(() => {
+              options.onUserJoined?.(message);
+            });
+          } else {
+            // For leaves, just fetch the updated list
+            refreshActiveUsers().then(() => {
+              options.onUserLeft?.(message);
+            });
+          }
           break;
         case TOPICS.GLOBAL:
           options.onGlobalMessage?.(message);
@@ -57,7 +86,7 @@ export function useKafka(options: UseKafkaOptions = {}) {
     });
 
     return cleanup;
-  }, [isConnected, options, username]);
+  }, [isConnected, options, username, refreshActiveUsers]);
 
   // Send message helper functions
   const sendGlobalMessage = useCallback(
@@ -73,6 +102,7 @@ export function useKafka(options: UseKafkaOptions = {}) {
     },
     [username]
   );
+
   const sendDirectMessage = useCallback(
     async (
       to: string,

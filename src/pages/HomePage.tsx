@@ -69,7 +69,7 @@ const HomePage = () => {
   });
 
   useEffect(() => {
-    if (!checkUsername() && !isConnected) {
+    if (!checkUsername() || !isConnected) {
       navigate("/login");
       return;
     }

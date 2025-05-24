@@ -1,4 +1,4 @@
-import { ReactNode, useState, useEffect } from "react";
+import { ReactNode, useState, useEffect, useCallback } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import Sidebar from "@/components/layouts/Sidebar";
 import Navbar from "@/components/layouts/Navbar";
@@ -22,75 +22,54 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [title, setTitle] = useState("Chat");
   const { username, initialActiveUsers } = useUser();
-  const [activeUsers, setActiveUsers] =
-    useState<Map<string, string>>(initialActiveUsers);
   const [directMessages, setDirectMessages] = useState<DirectMessageItem[]>([]);
 
+  // Use activeUsers from Kafka hook which maintains the up-to-date list
   const { activeUsers: kafkaActiveUsers } = useKafka({
     onUserJoined: (message: UserStatusMessage) => {
-      if (message.username !== username) {
-        setActiveUsers((prev) => {
-          const newMap = new Map(prev);
-          newMap.set(message.username, message.consumerId);
-          return newMap;
-        });
-      }
-      // Update with full user list if provided
-      if (message.dmList) {
-        console.log("message:", message);
-        console.log("typeof dmList:", typeof message.dmList);
-        setActiveUsers(
-          new Map(message.dmList.filter(([user]) => user !== username))
-        );
-        console.log("dm list received:", message.dmList);
-        console.log("active users after filtering:", activeUsers);
-      }
-      updateDirectMessages();
+      updateDirectMessages(kafkaActiveUsers);
     },
     onUserLeft: (message: UserStatusMessage) => {
-      setActiveUsers((prev) => {
-        const newMap = new Map(prev);
-        newMap.delete(message.username);
-        return newMap;
-      });
-      updateDirectMessages();
+      updateDirectMessages(kafkaActiveUsers);
     },
-  });
-
-  const updateDirectMessages = () => {
-    const dmList = [
-      {
-        id: "global",
-        username: "Global Chat",
-        lastMessage: "Public chat room",
-        timestamp: new Date().toLocaleTimeString(),
-      },
-      ...Array.from(activeUsers.keys()).map((user) => ({
+  });  const updateDirectMessages = useCallback(
+    (userList: Map<string, string>) => {
+      const filteredUsers = new Map(
+        Array.from(userList).filter(([user]) => user !== username)
+      );
+      const dmList = Array.from(filteredUsers.keys()).map((user) => ({
         id: user,
-        username: user,
-        lastMessage: "Click to start chatting",
+        username: user === "global" ? "Global Chat" : user,
+        lastMessage:
+          user === "global" ? "Public chat room" : "Click to start chatting",
         timestamp: new Date().toLocaleTimeString(),
-      })),
-    ];
-    setDirectMessages(dmList);
-  };
+      }));
+      
+      // Sort the list to ensure global chat is always first
+      const sortedList = dmList.sort((a, b) => {
+        if (a.id === "global") return -1;
+        if (b.id === "global") return 1;
+        return a.username.localeCompare(b.username);
+      });
+      
+      setDirectMessages(sortedList);
+    },
+    [username]
+  );
 
-  // Initialize DM list when component mounts
+  // Initialize DM list with initial active users
   useEffect(() => {
-    updateDirectMessages();
-  }, []);
+    if (initialActiveUsers.size > 0) {
+      updateDirectMessages(initialActiveUsers);
+    }
+  }, [initialActiveUsers, updateDirectMessages]);
 
-  // Keep active users in sync with Kafka
+  // Keep direct messages in sync with Kafka active users
   useEffect(() => {
     if (kafkaActiveUsers.size > 0) {
-      setActiveUsers(
-        new Map(
-          Array.from(kafkaActiveUsers).filter(([user]) => user !== username)
-        )
-      );
-      updateDirectMessages();
+      updateDirectMessages(kafkaActiveUsers);
     }
-  }, [kafkaActiveUsers, username]);
+  }, [kafkaActiveUsers, updateDirectMessages]);
 
   return (
     <div className="min-h-screen flex bg-blue-50">

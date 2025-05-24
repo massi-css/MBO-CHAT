@@ -14,5 +14,9 @@ interface Window {
     onMessage: (
       callback: (data: { topic: string; message: any }) => void
     ) => () => void;
+    getActiveUsers: () => Promise<{
+      success: boolean;
+      dmList: Map<string, string>;
+    }>;
   };
 }
