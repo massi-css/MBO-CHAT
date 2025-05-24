@@ -141,6 +141,18 @@ const HomePage = () => {
           />
         );
       }
+      if (mimeType.startsWith("video/")) {
+        return (
+          <video
+            controls
+            className="max-w-full rounded-lg"
+            style={{ maxHeight: "300px" }}
+          >
+            <source src={`data:${mimeType};base64,${data}`} type={mimeType} />
+            Your browser does not support the video tag.
+          </video>
+        );
+      }
       // For other file types, show a download link
       return (
         <div className="flex items-center gap-2">
