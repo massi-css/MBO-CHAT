@@ -62,7 +62,7 @@ const AlertDialog = ({
               "flex-1 px-8 shadow-sm transition-all font-medium",
               variant === "destructive"
                 ? "bg-red-600 hover:bg-red-700 text-white border border-red-600"
-                : "bg-blue-600 hover:bg-blue-700 text-white border border-blue-600"
+                : "bg-primary hover:bg-primary text-white border border-primary"
             )}
           >
             {confirmText}

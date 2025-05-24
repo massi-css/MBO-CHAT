@@ -52,7 +52,7 @@ export const FileMessage: React.FC<FileMessageProps> = ({
         href={`data:${mimeType};base64,${data}`}
         download={filename}
         className={`${
-          isCurrentUser ? "text-white" : "text-blue-500"
+          isCurrentUser ? "text-white" : "text-primary"
         } hover:underline`}
       >
         {filename}

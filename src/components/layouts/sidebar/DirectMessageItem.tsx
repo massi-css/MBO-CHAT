@@ -27,14 +27,14 @@ export function DirectMessageItem({
         "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors group",
         isActive
           ? "bg-white shadow-md text-slate-900"
-          : "text-slate-600 hover:bg-slate-50 hover:text-blue-600"
+          : "text-slate-600 hover:bg-slate-50 hover:text-primary"
       )}
       onClick={() => onNavigate(dm.username)}
     >
       {" "}
       <div
         className={cn(
-          "flex items-center justify-center size-10 rounded-full font-bold text-lg transition-colors bg-blue-100 text-blue-600"
+          "flex items-center justify-center size-10 rounded-full font-bold text-lg transition-colors bg-blue-100 text-primary"
         )}
       >
         {dm.username[0].toUpperCase()}

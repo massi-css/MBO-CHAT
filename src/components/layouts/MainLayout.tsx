@@ -110,7 +110,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
       {/* Main Content */}
       <div className="flex-1 flex flex-col pl-0 lg:pl-64">
         <Navbar title={title} onMenuClick={() => setIsSidebarOpen(true)} />
-        <main className="bg-white relative sm:rounded-tl-3xl shadow-lg flex-1 p-4 sm:p-8 overflow-auto max-w-[calc(7xl-64px)] mx-auto w-[calc(100%-64px)] max-h-[calc(100vh-4rem)]">
+        <main className="bg-white relative sm:rounded-tl-3xl shadow-lg flex-1 p-4 sm:p-8 overflow-x-hidden overflow-y-auto max-w-full mx-auto w-[calc(100%-64px)] max-h-[calc(100vh-4rem)]">
           <Outlet />
         </main>
       </div>
