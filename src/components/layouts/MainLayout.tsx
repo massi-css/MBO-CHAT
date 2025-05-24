@@ -40,10 +40,10 @@ export default function MainLayout({ children }: MainLayoutProps) {
         console.log("message:", message);
         console.log("typeof dmList:", typeof message.dmList);
         setActiveUsers(
-          new Map(
-            Array.from(message.dmList).filter(([user]) => user !== username)
-          )
+          new Map(message.dmList.filter(([user]) => user !== username))
         );
+        console.log("dm list received:", message.dmList);
+        console.log("active users after filtering:", activeUsers);
       }
       updateDirectMessages();
     },

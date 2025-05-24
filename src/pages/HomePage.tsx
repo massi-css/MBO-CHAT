@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+  useRef,
+} from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +33,7 @@ const HomePage = () => {
     handleDirectMessage,
     handleUserStatusMessage,
   } = useMessages();
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   const messages = useMemo(
     () => getMessages(currentRoom),
@@ -71,31 +78,63 @@ const HomePage = () => {
   const handleSendFile = async (file: File) => {
     if (!isConnected || !file) return;
 
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      const base64Data = (e.target?.result as string)?.split(",")[1];
-      if (!base64Data) return;
+    const CHUNK_SIZE = 750 * 1024; // 750KB chunks to stay safely under Kafka limits
+    const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+    const fileId = `${Date.now()}-${file.name}`; // Unique ID for this file transfer
+
+    const sendChunk = async (chunk: ArrayBuffer, index: number) => {
+      const base64Data = btoa(
+        new Uint8Array(chunk).reduce(
+          (data, byte) => data + String.fromCharCode(byte),
+          ""
+        )
+      );
 
       const fileContent: FileContent = {
         filename: file.name,
         data: base64Data,
         mimeType: file.type,
+        fileId,
+        chunkIndex: index,
+        totalChunks,
+        isChunked: true,
       };
 
-      console.log("[HomePage] Sending file:", {
-        currentRoom,
-        filename: file.name,
-        isGlobal: currentRoom === "global",
-      });
+      console.log(
+        `[HomePage] Sending chunk ${index + 1}/${totalChunks} for ${file.name}`
+      );
 
       const result =
         currentRoom === "global"
           ? await sendGlobalMessage(fileContent, "file")
           : await sendDirectMessage(currentRoom, fileContent, "file");
 
-      console.log("[HomePage] Send file result:", result);
+      return result;
     };
-    reader.readAsDataURL(file);
+
+    for (let i = 0; i < totalChunks; i++) {
+      const start = i * CHUNK_SIZE;
+      const end = Math.min(start + CHUNK_SIZE, file.size);
+      const chunk = file.slice(start, end);
+
+      const chunkArrayBuffer = await new Promise<ArrayBuffer>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target?.result as ArrayBuffer);
+        reader.readAsArrayBuffer(chunk);
+      });
+
+      const result = await sendChunk(chunkArrayBuffer, i);
+
+      if (!result.success) {
+        console.error(
+          `[HomePage] Failed to send chunk ${i + 1}/${totalChunks}:`,
+          result.error
+        );
+        return;
+      }
+    }
+
+    console.log(`[HomePage] Successfully sent all chunks for ${file.name}`);
   };
 
   const handleSendMessage = async () => {
@@ -127,10 +166,20 @@ const HomePage = () => {
       handleSendMessage();
     }
   };
-
   const renderMessage = (message: Message) => {
     if (message.type === "file" && message.fileContent) {
-      const { mimeType, data, filename } = message.fileContent;
+      const { mimeType, data, filename, isChunked, fileId } =
+        message.fileContent;
+
+      // Don't render incomplete chunked files being received
+      if (isChunked) {
+        return (
+          <div className="text-sm italic">
+            {message.isCurrentUser ? "Sending" : "Receiving"} {filename}...
+          </div>
+        );
+      }
+
       if (mimeType.startsWith("image/")) {
         return (
           <img
@@ -173,10 +222,22 @@ const HomePage = () => {
     return <div className="text-sm break-words">{message.text}</div>;
   };
 
+  // Scroll to bottom function
+  const scrollToBottom = useCallback(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messagesEndRef]);
+
+  // Scroll to bottom on new message
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, scrollToBottom]);
+
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)]">
       {/* Messages area */}
-      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6">
+      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-thumb]:bg-blue-500 [&::-webkit-scrollbar-thumb]:rounded-full">
         {messages.map((message) => (
           <div
             key={message.id}
@@ -211,8 +272,8 @@ const HomePage = () => {
             </div>
           </div>
         ))}
+        <div ref={messagesEndRef} /> {/* Anchor element for auto-scroll */}
       </div>
-
       {/* Input area */}
       <div className="border-t bg-white p-4">
         <div className="flex gap-2 items-center max-w-4xl mx-auto">

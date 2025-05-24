@@ -2,6 +2,10 @@ export interface FileContent {
   filename: string;
   data: string; // Base64 encoded file data
   mimeType: string;
+  fileId?: string;
+  chunkIndex?: number;
+  totalChunks?: number;
+  isChunked?: boolean;
 }
 
 export interface ChatMessage {

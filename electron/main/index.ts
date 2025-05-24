@@ -3,6 +3,16 @@ import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import os from "node:os";
+
+// Store chunks until all parts are received
+const fileChunks: {
+  [key: string]: {
+    chunks: { [key: number]: string };
+    totalChunks: number;
+    mimeType: string;
+    filename: string;
+  };
+} = {};
 import {
   initKafka,
   sendMessage,
@@ -46,6 +56,56 @@ const indexHtml = path.join(RENDERER_DIST, "index.html");
 
 // Kafka message handler
 function handleKafkaMessage(topic: string, message: any) {
+  // Handle chunked file messages
+  if (message.type === "file" && message.content.isChunked) {
+    const { fileId, chunkIndex, totalChunks, data, mimeType, filename } =
+      message.content;
+
+    // Initialize file entry if it doesn't exist
+    if (!fileChunks[fileId]) {
+      fileChunks[fileId] = {
+        chunks: {},
+        totalChunks,
+        mimeType,
+        filename,
+      };
+    }
+
+    // Store this chunk
+    fileChunks[fileId].chunks[chunkIndex] = data;
+
+    // Check if we have all chunks
+    const receivedChunks = Object.keys(fileChunks[fileId].chunks).length;
+
+    if (receivedChunks === totalChunks) {
+      // Reconstruct the complete file
+      const sortedChunks = Array.from(
+        { length: totalChunks },
+        (_, i) => fileChunks[fileId].chunks[i]
+      );
+
+      // Combine all chunks
+      const completeFile = {
+        ...message,
+        content: {
+          data: sortedChunks.join(""),
+          mimeType: fileChunks[fileId].mimeType,
+          filename: fileChunks[fileId].filename,
+          isChunked: false,
+        },
+      };
+
+      // Delete the temporary chunks
+      delete fileChunks[fileId];
+
+      // Send the complete file to the renderer
+      win?.webContents.send("kafka-message", { topic, message: completeFile });
+    }
+    // Don't send individual chunks to the renderer
+    return;
+  }
+
+  // Handle regular messages
   win?.webContents.send("kafka-message", { topic, message });
 }
 
