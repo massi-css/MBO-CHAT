@@ -138,7 +138,6 @@ function initializeKafkaHandlers() {
       return { success: false, error: error.message };
     }
   });
-
   // Handle getting active users
   ipcMain.handle("get-active-users", async () => {
     try {
@@ -152,6 +151,11 @@ function initializeKafkaHandlers() {
       emptyList.set("global", "global-chat");
       return { success: false, dmList: emptyList };
     }
+  });
+
+  // Handle Kafka shutdown
+  ipcMain.handle("kafka-shutdown", async () => {
+    await shutdown();
   });
 }
 
@@ -180,7 +184,6 @@ async function createWindow() {
   } else {
     win.loadFile(indexHtml);
   }
-
   // Make all links open with the browser, not with the application
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith("https:")) shell.openExternal(url);
@@ -209,13 +212,6 @@ app.on("activate", () => {
     createWindow();
   }
 });
-
-// Listen for count messages from renderer
-ipcMain.on("count", (event, arg) => {
-  console.log("count", arg);
-  win?.webContents.send("message", `Received count: ${arg}`);
-});
-
 // New window example arg: new windows url
 ipcMain.handle("open-win", (_, arg) => {
   const childWindow = new BrowserWindow({

@@ -32,7 +32,8 @@ export default function MainLayout({ children }: MainLayoutProps) {
     onUserLeft: (message: UserStatusMessage) => {
       updateDirectMessages(kafkaActiveUsers);
     },
-  });  const updateDirectMessages = useCallback(
+  });
+  const updateDirectMessages = useCallback(
     (userList: Map<string, string>) => {
       const filteredUsers = new Map(
         Array.from(userList).filter(([user]) => user !== username)
@@ -44,14 +45,14 @@ export default function MainLayout({ children }: MainLayoutProps) {
           user === "global" ? "Public chat room" : "Click to start chatting",
         timestamp: new Date().toLocaleTimeString(),
       }));
-      
+
       // Sort the list to ensure global chat is always first
       const sortedList = dmList.sort((a, b) => {
         if (a.id === "global") return -1;
         if (b.id === "global") return 1;
         return a.username.localeCompare(b.username);
       });
-      
+
       setDirectMessages(sortedList);
     },
     [username]

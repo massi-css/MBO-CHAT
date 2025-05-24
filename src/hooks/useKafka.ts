@@ -54,14 +54,12 @@ export function useKafka(options: UseKafkaOptions = {}) {
             refreshActiveUsers({
               username: message.username,
               consumerId: message.consumerId,
-            }).then(() => {
-              options.onUserJoined?.(message);
             });
+            options.onUserJoined?.(message);
           } else {
             // For leaves, just fetch the updated list
-            refreshActiveUsers().then(() => {
-              options.onUserLeft?.(message);
-            });
+            refreshActiveUsers();
+            options.onUserLeft?.(message);
           }
           break;
         case TOPICS.GLOBAL:

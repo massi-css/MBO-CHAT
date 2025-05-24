@@ -18,5 +18,6 @@ interface Window {
       success: boolean;
       dmList: Map<string, string>;
     }>;
+    shutdown: () => Promise<void>;
   };
 }

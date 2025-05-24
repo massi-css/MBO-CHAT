@@ -26,5 +26,4 @@ export interface DirectMessage {
 export interface UserStatusMessage {
   username: string;
   consumerId: string;
-  dmList: [string, string][]; // Array of [username, consumerId] pairs
 }

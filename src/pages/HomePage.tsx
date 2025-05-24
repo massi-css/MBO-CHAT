@@ -19,6 +19,7 @@ import {
   UserStatusMessage,
   FileContent,
 } from "@/types/kafka";
+import { TOPICS } from "@/shared/kafka-types";
 
 const HomePage = () => {
   const navigate = useNavigate();
@@ -49,6 +50,19 @@ const HomePage = () => {
       initRoom("global");
     }
   }, [id, initRoom]);
+  useEffect(() => {
+    // listen to page reload
+    const handleBeforeUnload = () => {
+      // Properly shutdown Kafka connection
+      window.kafka.shutdown();
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [username]);
 
   const { isConnected, sendGlobalMessage, sendDirectMessage } = useKafka({
     onGlobalMessage: (message: ChatMessage) => {

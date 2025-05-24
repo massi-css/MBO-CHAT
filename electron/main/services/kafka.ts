@@ -81,16 +81,12 @@ export async function initKafka(username: string) {
         replicationFactor: 1,
       })),
     });
-
-    const initialDmList = await getActiveUsers();
-    const dmListArray = Array.from(initialDmList);
-
     await sendMessage(KAFKA_TOPICS.USER_JOINED, {
       username,
       consumerId,
-      dmList: dmListArray,
     });
 
+    const initialDmList = await getActiveUsers();
     return { success: true, dmList: initialDmList };
   } catch (error) {
     console.error("Failed to initialize Kafka:", error);
@@ -112,16 +108,8 @@ export async function subscribe(
         message,
       }: EachMessagePayload) => {
         const value = JSON.parse(message.value?.toString() || "{}");
-
-        if (
-          topic === KAFKA_TOPICS.USER_JOINED ||
-          topic === KAFKA_TOPICS.USER_LEFT
-        ) {
-          const updatedDmList = await getActiveUsers();
-          messageHandler(topic, { ...value, dmList: updatedDmList });
-        } else {
-          messageHandler(topic, value);
-        }
+        // All messages are passed directly to the message handler
+        messageHandler(topic, value);
       },
     });
     return true;
@@ -146,15 +134,12 @@ export async function sendMessage(topic: string, message: unknown) {
 // Clean shutdown
 export async function shutdown() {
   try {
-    const dmList = await getActiveUsers();
-    const dmListArray = Array.from(dmList);
     const username = extractUsernameFromConsumerId(consumerId);
 
     if (username) {
       await sendMessage(KAFKA_TOPICS.USER_LEFT, {
         username,
         consumerId,
-        dmList: dmListArray,
       });
     }
 
