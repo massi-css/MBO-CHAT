@@ -158,7 +158,6 @@ export function MessagesProvider({ children }: { children: React.ReactNode }) {
     (message: UserStatusMessage, type: "joined" | "left") => {
       console.log(`[MessagesContext] Handling user ${type} message:`, {
         username: message.username,
-        dmList: message.dmList,
       });
       const systemMsg: Message = {
         id: Date.now().toString(),

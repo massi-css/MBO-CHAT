@@ -36,6 +36,8 @@ contextBridge.exposeInMainWorld("kafka", {
     ipcRenderer.on("kafka-message", handler);
     return () => ipcRenderer.removeListener("kafka-message", handler);
   },
+  getActiveUsers: () => ipcRenderer.invoke("get-active-users"),
+  shutdown: () => ipcRenderer.invoke("kafka-shutdown"),
 });
 
 // --------- Preload scripts loading ---------

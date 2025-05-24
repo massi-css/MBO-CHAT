@@ -9,6 +9,10 @@ export interface Message {
     filename: string;
     data: string; // Base64 encoded file data
     mimeType: string;
+    fileId?: string;
+    chunkIndex?: number;
+    totalChunks?: number;
+    isChunked?: boolean;
   };
   type: "text" | "file";
 }

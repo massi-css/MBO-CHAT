@@ -1,11 +1,13 @@
-import { ReactNode, useState, useEffect } from "react";
+import { ReactNode, useState, useEffect, useCallback } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import Sidebar from "@/components/layouts/Sidebar";
 import Navbar from "@/components/layouts/Navbar";
 import { cn } from "@/lib/utils";
+import { formatTime } from "@/lib/date";
 import { useUser } from "@/hooks/useUser";
 import { useKafka } from "@/hooks/useKafka";
-import { UserStatusMessage, DirectMessage } from "@/types/kafka";
+import { useMessages } from "@/hooks/useMessages";
+import { UserStatusMessage } from "@/types/kafka";
 
 interface MainLayoutProps {
   children?: ReactNode;
@@ -22,71 +24,63 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [title, setTitle] = useState("Chat");
   const { username, initialActiveUsers } = useUser();
-  const [activeUsers, setActiveUsers] =
-    useState<Map<string, string>>(initialActiveUsers);
   const [directMessages, setDirectMessages] = useState<DirectMessageItem[]>([]);
+  const { messagesByRoom, getMessages } = useMessages();
 
-  const { isConnected, activeUsers: kafkaActiveUsers } = useKafka({
+  // Use activeUsers from Kafka hook which maintains the up-to-date list
+  const { activeUsers: kafkaActiveUsers } = useKafka({
     onUserJoined: (message: UserStatusMessage) => {
-      if (message.username !== username) {
-        setActiveUsers((prev) => {
-          const newMap = new Map(prev);
-          newMap.set(message.username, message.consumerId);
-          return newMap;
-        });
-      }
-      // Update with full user list if provided
-      if (message.dmList) {
-        setActiveUsers(
-          new Map(message.dmList.filter(([user]) => user !== username))
-        );
-      }
-      updateDirectMessages();
+      updateDirectMessages(kafkaActiveUsers);
     },
     onUserLeft: (message: UserStatusMessage) => {
-      setActiveUsers((prev) => {
-        const newMap = new Map(prev);
-        newMap.delete(message.username);
-        return newMap;
-      });
-      updateDirectMessages();
+      updateDirectMessages(kafkaActiveUsers);
     },
   });
+  const updateDirectMessages = useCallback(
+    (userList: Map<string, string>) => {
+      const filteredUsers = new Map(
+        Array.from(userList).filter(([user]) => user !== username)
+      );
 
-  const updateDirectMessages = () => {
-    const dmList = [
-      {
-        id: "global",
-        username: "Global Chat",
-        lastMessage: "Public chat room",
-        timestamp: new Date().toLocaleTimeString(),
-      },
-      ...Array.from(activeUsers.keys()).map((user) => ({
-        id: user,
-        username: user,
-        lastMessage: "Click to start chatting",
-        timestamp: new Date().toLocaleTimeString(),
-      })),
-    ];
-    setDirectMessages(dmList);
-  };
+      const dmList = Array.from(filteredUsers.keys()).map((user) => {
+        // Get messages for this room
+        const userMessages = getMessages(user === "global" ? "global" : user);
+        const lastMsg = userMessages[userMessages.length - 1];
+        console.log(`Last message for ${user}:`, lastMsg);
 
-  // Initialize DM list when component mounts
+        return {
+          id: user,
+          username: user === "global" ? "Global Chat" : user,
+          lastMessage: lastMsg
+            ? lastMsg.text
+            : user === "global"
+            ? "Public chat room"
+            : "Click to start chatting",
+          timestamp: lastMsg ? lastMsg.timestamp : formatTime(new Date()),
+        };
+      });
+
+      const sortedList = dmList.sort((a, b) => {
+        if (a.id === "global") return -1;
+        if (b.id === "global") return 1;
+        return a.username.localeCompare(b.username);
+      });
+
+      setDirectMessages(sortedList);
+    },
+    [username, getMessages]
+  );
+
   useEffect(() => {
-    updateDirectMessages();
-  }, []);
-
-  // Keep active users in sync with Kafka
+    if (initialActiveUsers.size > 0) {
+      updateDirectMessages(initialActiveUsers);
+    }
+  }, [initialActiveUsers, updateDirectMessages]);
   useEffect(() => {
     if (kafkaActiveUsers.size > 0) {
-      setActiveUsers(
-        new Map(
-          Array.from(kafkaActiveUsers).filter(([user]) => user !== username)
-        )
-      );
-      updateDirectMessages();
+      updateDirectMessages(kafkaActiveUsers);
     }
-  }, [kafkaActiveUsers, username]);
+  }, [kafkaActiveUsers, updateDirectMessages, messagesByRoom]);
 
   return (
     <div className="min-h-screen flex bg-blue-50">
