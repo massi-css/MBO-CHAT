@@ -46,14 +46,26 @@ export const FileMessage: React.FC<FileMessageProps> = ({
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <PaperclipIcon className="h-4 w-4" />
+    <div
+      className={`flex items-center gap-2 p-2 rounded-lg ${
+        isCurrentUser
+          ? "bg-white/20 hover:bg-white/30"
+          : "bg-blue-500/10 hover:bg-blue-500/20"
+      } transition-colors`}
+    >
+      <PaperclipIcon
+        className={`h-4 w-4 ${
+          isCurrentUser ? "text-white/80" : "text-blue-500"
+        }`}
+      />
       <a
         href={`data:${mimeType};base64,${data}`}
         download={filename}
-        className={`${
-          isCurrentUser ? "text-white" : "text-blue-500"
-        } hover:underline`}
+        className={`text-sm ${
+          isCurrentUser
+            ? "text-white/90 hover:text-white"
+            : "text-blue-600 hover:text-blue-700"
+        } font-medium hover:underline transition-colors`}
       >
         {filename}
       </a>

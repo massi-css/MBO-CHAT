@@ -20,7 +20,7 @@ export const ChatBox: React.FC<ChatBoxProps> = ({ messages }) => {
   }, [messages, scrollToBottom]);
 
   return (
-    <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-thumb]:bg-blue-500 [&::-webkit-scrollbar-thumb]:rounded-full">
+    <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-thumb]:bg-primary [&::-webkit-scrollbar-thumb]:rounded-full">
       {messages.map((message) => (
         <ChatMessage key={message.id} message={message} />
       ))}

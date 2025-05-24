@@ -130,9 +130,16 @@ async function createWindow() {
     icon: path.join(process.env.VITE_PUBLIC, "favicon.ico"),
     webPreferences: {
       preload,
-      devTools: true,
+      devTools: false,
       webSecurity: true,
     },
+  });
+
+  // Disable refresh/reload
+  win.webContents.on("before-input-event", (event, input) => {
+    if ((input.control || input.meta) && input.key.toLowerCase() === "r") {
+      event.preventDefault();
+    }
   });
 
   if (VITE_DEV_SERVER_URL) {
