@@ -5,7 +5,7 @@ import Navbar from "@/components/layouts/Navbar";
 import { cn } from "@/lib/utils";
 import { useUser } from "@/hooks/useUser";
 import { useKafka } from "@/hooks/useKafka";
-import { UserStatusMessage, DirectMessage } from "@/types/kafka";
+import { UserStatusMessage } from "@/types/kafka";
 
 interface MainLayoutProps {
   children?: ReactNode;
@@ -26,7 +26,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
     useState<Map<string, string>>(initialActiveUsers);
   const [directMessages, setDirectMessages] = useState<DirectMessageItem[]>([]);
 
-  const { isConnected, activeUsers: kafkaActiveUsers } = useKafka({
+  const { activeUsers: kafkaActiveUsers } = useKafka({
     onUserJoined: (message: UserStatusMessage) => {
       if (message.username !== username) {
         setActiveUsers((prev) => {
@@ -37,8 +37,12 @@ export default function MainLayout({ children }: MainLayoutProps) {
       }
       // Update with full user list if provided
       if (message.dmList) {
+        console.log("message:", message);
+        console.log("typeof dmList:", typeof message.dmList);
         setActiveUsers(
-          new Map(message.dmList.filter(([user]) => user !== username))
+          new Map(
+            Array.from(message.dmList).filter(([user]) => user !== username)
+          )
         );
       }
       updateDirectMessages();

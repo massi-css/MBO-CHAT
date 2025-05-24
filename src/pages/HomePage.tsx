@@ -160,7 +160,9 @@ const HomePage = () => {
           <a
             href={`data:${mimeType};base64,${data}`}
             download={filename}
-            className="text-blue-500 hover:underline"
+            className={`${
+              message.isCurrentUser ? "text-white" : "text-blue-500"
+            } hover:underline`}
           >
             {filename}
           </a>
